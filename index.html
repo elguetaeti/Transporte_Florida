@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- Viewport modificado para móvil -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+    <link rel="stylesheet" href="css/qgis2web.css">
+    <link rel="stylesheet" href="css/fontawesome-all.min.css">
+    <link rel="stylesheet" href="css/leaflet.photon.css">
+    <link rel="stylesheet" href="css/leaflet-measure.css">
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        /* Popup personalizado para rutas */
+        .popup-fullname {
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        /* Logo en esquina inferior derecha */
+        .custom-logo {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            height: 55px;
+            z-index: 1000;
+            cursor: pointer;
+        }
+        /* Leyenda fija para Comentarios Casa Abierta */
+        .leaflet-control-layers-fixed {
+            background: white;
+            padding: 6px 8px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            font-size: 14px;
+        }
+        /* Estilos para popup Comentarios Casa Abierta */
+        .comentarios-popup {
+            font-family: "Century Gothic", CenturyGothic, AppleGothic, sans-serif;
+            font-size: 12px;
+        }
+        .comentarios-popup .ruta-subtitulo {
+            font-weight: bold;
+            font-style: italic;
+            margin-top: 8px;
+            margin-bottom: 2px;
+        }
+    </style>
+    <title></title>
+</head>
+<body>
+    <div id="map"></div>
+    <!-- Logo -->
+    <a href="https://www.estudiostecnicos.com" target="_blank" class="custom-logo">
+        <img src="https://estudiostecnicos.com/wp-content/uploads/2021/01/logo-trasnparente.png" 
+             alt="Estudios Técnicos Inc." height="55" style="display:block; max-width:none;">
+    </a>
+    
+    <script src="js/qgis2web_expressions.js"></script>
+    <script src="js/leaflet.js"></script>
+    <script src="js/L.Control.Layers.Tree.min.js"></script>
+    <script src="js/leaflet.rotatedMarker.js"></script>
+    <script src="js/leaflet.pattern.js"></script>
+    <script src="js/leaflet-hash.js"></script>
+    <script src="js/Autolinker.min.js"></script>
+    <script src="js/rbush.min.js"></script>
+    <script src="js/labelgun.min.js"></script>
+    <script src="js/labels.js"></script>
+    <script src="js/leaflet.photon.js"></script>
+    <script src="js/leaflet-measure.js"></script>
+    <script src="data/municipio_floridamunicipalities_jp_2023__florida_1.js"></script>
+    <script src="data/directions_2.js"></script>
+    <script src="data/ComentariosCasaAbierta_3.js"></script>
+    <script>
+        var map = L.map('map', {
+            zoomControl: false, maxZoom: 28, minZoom: 1
+        }).fitBounds([[18.342045417049988,-66.6003073946863],[18.388884399391102,-66.53831788843627]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        function removeEmptyRowsFromPopupContent(content, feature) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var rows = tempDiv.querySelectorAll('tr');
+            for (var i = 0; i < rows.length; i++) {
+                var td = rows[i].querySelector('td.visible-with-data');
+                var key = td ? td.id : '';
+                if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                    rows[i].parentNode.removeChild(rows[i]);
+                }
+            }
+            return tempDiv.innerHTML;
+        }
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            if (tempDiv.querySelector('td img')) {
+                popup._contentNode.classList.add('media');
+                setTimeout(function() {
+                    popup.update();
+                }, 10);
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var zoomControl = L.control.zoom({ position: 'topleft' }).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+
+        function setBounds() {}
+
+        map.createPane('pane_GoogleMaps_0');
+        map.getPane('pane_GoogleMaps_0').style.zIndex = 400;
+        var layer_GoogleMaps_0 = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            pane: 'pane_GoogleMaps_0',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        map.addLayer(layer_GoogleMaps_0);
+
+        // --- Capa Municipios (SIEMPRE visible y bloqueada) ---
+        function pop_municipio_floridamunicipalities_jp_2023__florida_1(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['objectid'] !== null ? autolinker.link(String(feature.properties['objectid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['municipio'] !== null ? autolinker.link(String(feature.properties['municipio']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['statefp'] !== null ? autolinker.link(String(feature.properties['statefp']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['countyfp'] !== null ? autolinker.link(String(feature.properties['countyfp']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['cntyidfp'] !== null ? autolinker.link(String(feature.properties['cntyidfp']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['geoid'] !== null ? autolinker.link(String(feature.properties['geoid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['abrev_mun'] !== null ? autolinker.link(String(feature.properties['abrev_mun']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['area'] !== null ? autolinker.link(String(feature.properties['area']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+            layer.on('popupopen', function(e) {
+                addClassToPopupIfMedia(content, e.popup);
+            });
+            layer.bindPopup(content, { maxHeight: 400 });
+        }
+        function style_municipio_floridamunicipalities_jp_2023__florida_1_0() {
+            return {
+                pane: 'pane_municipio_floridamunicipalities_jp_2023__florida_1',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 3.0,
+                fillOpacity: 0,
+                interactive: false,
+            };
+        }
+        map.createPane('pane_municipio_floridamunicipalities_jp_2023__florida_1');
+        map.getPane('pane_municipio_floridamunicipalities_jp_2023__florida_1').style.zIndex = 401;
+        map.getPane('pane_municipio_floridamunicipalities_jp_2023__florida_1').style['mix-blend-mode'] = 'normal';
+        var layer_municipio_floridamunicipalities_jp_2023__florida_1 = new L.geoJson(json_municipio_floridamunicipalities_jp_2023__florida_1, {
+            attribution: '',
+            interactive: false,
+            dataVar: 'json_municipio_floridamunicipalities_jp_2023__florida_1',
+            layerName: 'layer_municipio_floridamunicipalities_jp_2023__florida_1',
+            pane: 'pane_municipio_floridamunicipalities_jp_2023__florida_1',
+            onEachFeature: pop_municipio_floridamunicipalities_jp_2023__florida_1,
+            style: style_municipio_floridamunicipalities_jp_2023__florida_1_0,
+        });
+        bounds_group.addLayer(layer_municipio_floridamunicipalities_jp_2023__florida_1);
+        map.addLayer(layer_municipio_floridamunicipalities_jp_2023__florida_1);
+
+        // --- FUNCIONES y ESTILOS PARA RUTAS AGRUPADAS POR line_name ---
+
+        // Colores manuales para rutas (ajusta si quieres)
+        var routeColors = {
+            'F1: CBD Loop': '#29ef23',
+            'F2: Park - La Ceiba Loop': '#a14dd2',
+            'F3: Park - Parcelas Arroyo Loop': '#dbb77e',
+            'F4: CBD - Parcelas Selgas Loop': '#71d0ad',
+            'IM1: Florida - Barceloneta': '#e1474e',
+            'T1: CBD - Altos de Florida': '#e36abf',
+            'T2:  CBD - Estancias de Arroyo': '#ee2c15',
+            'T3: CBD - Reparto Seoanes': '#4d52d9'
+        };
+
+        // Popup personalizado para rutas
+        function popupForRoute(feature, layer) {
+            var color = routeColors[feature.properties['line_name']] || '#000000';
+            var content = '<div class="popup-fullname" style="color:' + color + ';">' + (feature.properties['full_name'] || '') + '</div>' +
+                '<div>Min Headway: ' + (feature.properties['minheadway'] || '') + '</div>' +
+                '<div>Max Headway: ' + (feature.properties['maxheadway'] || '') + '</div>';
+            layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        // Estilo para rutas
+        function styleForRoute(feature) {
+            var color = routeColors[feature.properties['line_name']] || '#000000';
+            return {
+                pane: 'pane_directions_2',
+                opacity: 0.7,
+                color: color,
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 3,
+                fillOpacity: 0,
+                interactive: true,
+            };
+        }
+
+        // Crear pane para rutas
+        map.createPane('pane_directions_2');
+        map.getPane('pane_directions_2').style.zIndex = 402;
+        map.getPane('pane_directions_2').style['mix-blend-mode'] = 'normal';
+
+        // Agrupar rutas por line_name
+        var routesByLineName = {};
+        json_directions_2.features.forEach(function(feature) {
+            var ln = feature.properties.line_name;
+            if (!(ln in routesByLineName)) {
+                routesByLineName[ln] = {
+                    type: 'FeatureCollection',
+                    features: []
+                };
+            }
+            routesByLineName[ln].features.push(feature);
+        });
+
+        // Crear capas por ruta
+        var routeLayers = {};
+        for (var lineName in routesByLineName) {
+            routeLayers[lineName] = L.geoJson(routesByLineName[lineName], {
+                pane: 'pane_directions_2',
+                style: styleForRoute,
+                onEachFeature: popupForRoute,
+            });
+            bounds_group.addLayer(routeLayers[lineName]);
+            map.addLayer(routeLayers[lineName]);
+        }
+
+        // --- Capa Comentarios Casa Abierta ---
+
+        // Popup personalizado para ComentariosCasaAbierta con fuente Century Gothic,
+        // tamaño 12 para comentario, y subtítulo "Ruta" en negrita cursiva para último campo
+        function pop_ComentariosCasaAbierta_3(feature, layer) {
+            var popupContent = '<div class="comentarios-popup">' +
+                '<div style="font-weight:bold; font-size:14px; margin-bottom:4px;">Comentario</div>' +
+                '<div style="font-size:12px;">' + (feature.properties['notes'] !== null ? autolinker.link(String(feature.properties['notes'])) : '') + '</div>' +
+                '<div class="ruta-subtitulo">Ruta</div>' +
+                '<div>' + (feature.properties['ruta'] !== null ? autolinker.link(String(feature.properties['ruta'])) : '') + '</div>' +
+                '</div>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+            layer.on('popupopen', function(e) {
+                addClassToPopupIfMedia(content, e.popup);
+            });
+            layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        // Estilo punto ComentariosCasaAbierta_3
+        function style_ComentariosCasaAbierta_3_0() {
+            return {
+                pane: 'pane_ComentariosCasaAbierta_3',
+                radius: 4.8,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 2,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,0,97,1.0)',
+                interactive: true,
+            };
+        }
+        map.createPane('pane_ComentariosCasaAbierta_3');
+        map.getPane('pane_ComentariosCasaAbierta_3').style.zIndex = 403;
+        map.getPane('pane_ComentariosCasaAbierta_3').style['mix-blend-mode'] = 'normal';
+        var layer_ComentariosCasaAbierta_3 = new L.geoJson(json_ComentariosCasaAbierta_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_ComentariosCasaAbierta_3',
+            layerName: 'layer_ComentariosCasaAbierta_3',
+            pane: 'pane_ComentariosCasaAbierta_3',
+            onEachFeature: pop_ComentariosCasaAbierta_3,
+            pointToLayer: function (feature, latlng) {
+                return L.circleMarker(latlng, style_ComentariosCasaAbierta_3_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_ComentariosCasaAbierta_3);
+        map.addLayer(layer_ComentariosCasaAbierta_3);
+
+        // --- Control de capas: sólo rutas (municipios y comentarios NO aparecen para apagar) ---
+
+        var overlays = {};
+        for (var lineName in routeLayers) {
+            overlays[lineName] = routeLayers[lineName];
+        }
+        L.control.layers(null, overlays, {collapsed: false, position: 'topright'}).addTo(map);
+
+        // --- Leyenda fija para Comentarios Casa Abierta ---
+        var comentariosLegend = L.control({position: 'topright'});
+        comentariosLegend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'leaflet-control-layers-fixed');
+            div.innerHTML = '<b>Comentarios Casa Abierta</b><br><svg height="14" width="14"><circle cx="7" cy="7" r="5" fill="rgba(255,0,97,1)"></circle></svg> Localización de comentario';
+            return div;
+        };
+        comentariosLegend.addTo(map);
+
+        setBounds();
+    </script>
+</body>
+</html>

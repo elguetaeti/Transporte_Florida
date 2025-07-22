@@ -360,7 +360,7 @@
         var comentariosLegend = L.control({position: 'topright'});
         comentariosLegend.onAdd = function (map) {
             var div = L.DomUtil.create('div', 'leaflet-control-layers-fixed');
-            div.innerHTML = '<b>Comentarios Casa Abierta</b><br><svg height="14" width="14"><circle cx="7" cy="7" r="5" fill="rgba(255,0,97,1)"></circle></svg> Localización de comentario';
+            div.innerHTML = '<b>Comentarios Casa Abierta</b><br><svg height="14" width="14"><circle cx="7" cy="7" r="5" fill="rgba(255,0,97,1)"></circle></svg> Localización del comentario';
             return div;
         };
         comentariosLegend.addTo(map);

@@ -59,10 +59,38 @@
     <title></title>
 </head>
 <body>
-    <div id="info-banner" style="position: sticky; top: 0; width: 100%; background-color: #f5f5f5; text-align: center; padding: 6px 30px 6px 10px; font-size: 12px; font-family: 'Century Gothic'; color: #555; z-index: 9999; box-shadow: 0 1px 4px rgba(0,0,0,0.1);">
-  Este visor es de uso informativo y no representa un sitio oficial de las rutas de transporte.
-  <span onclick="document.getElementById('info-banner').style.display='none'" style="position: absolute; right: 10px; top: 4px; cursor: pointer; font-weight: bold;">&times;</span>
+   <div id="banner-aviso" style="
+    position: fixed;
+    bottom: 15px;
+    left: 15px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #999;
+    border-left: 5px solid #E81426;
+    padding: 10px 14px;
+    font-family: 'Century Gothic', sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    color: #333;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    border-radius: 6px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    max-width: 320px;">
+    <span style="margin-right: 8px; color: #E81426;">⚠️</span>
+    <span style="flex-grow: 1;">El contenido mostrado es referencial y no representa información oficial.</span>
+    <button onclick="document.getElementById('banner-aviso').style.display='none'" 
+        style="
+            margin-left: 10px;
+            background: none;
+            border: none;
+            font-weight: bold;
+            font-size: 16px;
+            line-height: 1;
+            cursor: pointer;
+            color: #666;">×</button>
     </div>
+
     <div id="map"></div>
     <!-- Logo -->
     <a href="https://www.estudiostecnicos.com" target="_blank" class="custom-logo">

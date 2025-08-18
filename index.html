@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="css/leaflet.css">
+<link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+<link rel="stylesheet" href="css/qgis2web.css">
+<link rel="stylesheet" href="css/fontawesome-all.min.css">
+<link rel="stylesheet" href="css/leaflet.photon.css">
+<style>
+html, body, #map { width:100%; height:100%; margin:0; padding:0; }
+#logo { position:fixed; bottom:10px; right:10px; z-index:1000; }
+#logo img { height:55px; }
+#banner-aviso { position: fixed; bottom:15px; left:15px; background:rgba(255,255,255,0.95); border:1px solid #999; border-left:5px solid #e81426; padding:10px 14px; font-family:'Century Gothic', sans-serif; font-size:13px; font-weight:bold; color:#333; box-shadow:0 2px 6px rgba(0,0,0,0.2); border-radius:6px; z-index:9999; display:flex; align-items:center; max-width:320px; }
+#banner-aviso span:first-child { margin-right:8px; color:#e81426; font-size:18px; transform:scale(1.3); display:inline-block; }
+#legend-title { position: fixed; top:10px; right:10px; background: rgba(255,255,255,0.9); padding:8px 12px; font-family:'Century Gothic', sans-serif; font-size:15px; font-weight:bold; color:#333; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.2); max-width:270px; z-index:1000; }
+.leaflet-control-layers-overlays label { font-family:'Century Gothic', sans-serif; font-size:14px; margin-bottom:6px; display:block; }
+</style>
+<title>Plan de Transporte Municipio de Florida</title>
+</head>
+<body>
+<div id="map"></div>
+
+<!-- Logo flotante -->
+<div id="logo">
+    <a href="https://www.estudiostecnicos.com" target="_blank" rel="noopener">
+        <img src="https://estudiostecnicos.com/wp-content/uploads/2021/01/logo-trasnparente.png" alt="Logo Estudios Técnicos Inc.">
+    </a>
+</div>
+
+<!-- Banner aviso -->
+<div id="banner-aviso">
+    <span>⚠️</span>
+    <span>El contenido mostrado es referencial y no representa información oficial.</span>
+</div>
+
+<!-- Leyenda título -->
+
+<script src="js/leaflet.js"></script>
+<script src="js/qgis2web_expressions.js"></script>
+<script src="js/L.Control.Layers.Tree.min.js"></script>
+<script src="js/leaflet.rotatedMarker.js"></script>
+<script src="js/leaflet.pattern.js"></script>
+<script src="js/leaflet-hash.js"></script>
+<script src="js/Autolinker.min.js"></script>
+<script src="js/rbush.min.js"></script>
+<script src="js/labelgun.min.js"></script>
+<script src="js/labels.js"></script>
+<script src="js/leaflet.photon.js"></script>
+<script src="data/Rutas15deAgosto_1.js"></script>
+
+<script>
+// Ajuste de límites para permitir mover el mapa
+var maxBounds = [
+  [18.30, -66.60],  // esquina suroeste
+  [18.46, -66.53]   // esquina noreste
+];
+var map = L.map('map', {
+    zoomControl:false,
+    maxZoom:28,
+    minZoom:13,
+    maxBounds: maxBounds,
+    maxBoundsViscosity:0.5 // permite deslizarse un poco fuera del límite
+}).fitBounds(maxBounds);
+
+L.control.zoom({position:'topleft'}).addTo(map);
+new L.Hash(map);
+
+var autolinker = new Autolinker({truncate:{length:30, location:'smart'}});
+
+// Base Google Maps
+map.createPane('pane_GoogleMaps_0');
+map.getPane('pane_GoogleMaps_0').style.zIndex = 400;
+L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    pane:'pane_GoogleMaps_0',
+    opacity:1.0,
+    minZoom:3,
+    maxZoom:28
+}).addTo(map);
+
+// Colores por línea
+var colors = {
+    'F1: CBD Loop':'#DE497F',
+    'F2: Park - La Ceiba Loop':'#71A4D1',
+    'F3: Park - Parcelas Arroyo Loop':'#75CD94',
+    'F4: CBD - Parcelas Selgas Loop':'#7C14D0',
+    'F5: Las Tosas - Seoanes':'#B9D963',
+    'F6: Altos y Alturas de Florida Loop':'#98ED85',
+    'IM1: Florida - Barceloneta':'#EC2BD9',
+    'T1: CBD - Altos de Florida':'#4242DE',
+    'T2: CBD - Estancias de Arroyo':'#D66F58',
+    'T3: CBD - Reparto Seoanes':'#21D7C8',
+    'T4: CBD - Comisión':'#DAB348'
+};
+
+// Agrupar features por line_name
+var routeLayers = {};
+json_Rutas15deAgosto_1.features.forEach(function(feature){
+    var name = feature.properties.line_name;
+    if(!routeLayers[name]) routeLayers[name] = [];
+    routeLayers[name].push(feature);
+});
+
+// Crear overlays y añadir popups
+var overlays = {};
+Object.keys(routeLayers).forEach(function(name){
+    var color = colors[name]||'#000000';
+    var layer = L.geoJSON(routeLayers[name], {
+        style:{color:color, weight:3, opacity:0.7, fillOpacity:0},
+        onEachFeature:function(f,l){
+            var popupContent = '<div style="text-align:center; font-weight:bold; color:'+color+'">'+(f.properties.full_name||'')+'</div>';
+            l.bindPopup(popupContent);
+        }
+    }).addTo(map);
+    overlays[name] = layer;
+});
+
+// Capa Municipios visible y bloqueada
+var municipiosLayer = L.geoJSON(null, {style:{color:'#666666', weight:1, fillOpacity:0.1}}).addTo(map);
+
+// Control de capas
+L.control.layers(null, overlays, {collapsed:false}).addTo(map);
+</script>
+</body>
+</html>
